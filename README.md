@@ -187,6 +187,39 @@ export MEALIE_API_TOKEN=your-api-token
 python -m src.server
 ```
 
+### Hosting over HTTP (remote agents)
+
+By default the server uses stdio. To host it over the network, set `MCP_TRANSPORT=http` and a secret `MCP_AUTH_TOKEN`. The server refuses to start in HTTP mode without a token, and every request must send `Authorization: Bearer <token>`.
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `MCP_TRANSPORT` | `stdio` | `stdio` or `http` |
+| `MCP_AUTH_TOKEN` | – | Required for `http`; generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
+| `MCP_HOST` | `0.0.0.0` | Bind address |
+| `MCP_PORT` | `8000` | Port (endpoint is `/mcp`) |
+
+```bash
+docker run -d --restart=unless-stopped -p 8000:8000 \
+  -e MCP_TRANSPORT=http -e MCP_AUTH_TOKEN=... \
+  -e MEALIE_URL=https://your-mealie-instance.com -e MEALIE_API_TOKEN=... \
+  ghcr.io/mdlopresti/mealie-mcp:latest
+```
+
+Put it behind a reverse proxy with HTTPS (Caddy, nginx, Cloudflare Tunnel); a bearer token over plain HTTP can be sniffed. VS Code client config (`.vscode/mcp.json`):
+
+```json
+{
+  "inputs": [{ "type": "promptString", "id": "mealie-token", "description": "Mealie MCP token", "password": true }],
+  "servers": {
+    "mealie": {
+      "type": "http",
+      "url": "https://mcp.example.com/mcp",
+      "headers": { "Authorization": "Bearer ${input:mealie-token}" }
+    }
+  }
+}
+```
+
 ### Running Tests
 
 **Unit/Integration Tests** (mock API, always run):

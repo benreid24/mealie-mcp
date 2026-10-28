@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Added HTTP transport with bearer-token auth: set `MCP_TRANSPORT=http` and `MCP_AUTH_TOKEN` (plus optional `MCP_HOST`/`MCP_PORT`); the server refuses to start over HTTP without a token. Default transport remains stdio.
 - Added event notifications management with 6 new MCP tools (Batch 2 - Phase 2.3)
 - Added `mealie_notifications_list` tool to list all event notifications with pagination
 - Added `mealie_notifications_create` tool to create Apprise-based notifications for Mealie events

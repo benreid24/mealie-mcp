@@ -19,6 +19,8 @@ from fastmcp import FastMCP
 # Load environment variables
 load_dotenv()
 
+from bearer_auth import build_auth
+
 # Import tools
 from tools.recipes import (
     recipes_search,
@@ -163,7 +165,11 @@ from resources.mealplans import get_current_mealplan, get_today_meals
 from resources.shopping import get_shopping_lists, get_shopping_list_detail
 
 # Create MCP server
-mcp = FastMCP("mealie")
+MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "stdio").lower()
+mcp = FastMCP(
+    "mealie",
+    auth=build_auth(MCP_TRANSPORT, os.getenv("MCP_AUTH_TOKEN")),
+)
 
 
 # =============================================================================
@@ -2516,4 +2522,11 @@ def resource_shopping_list_detail(list_id: str) -> str:
 # =============================================================================
 
 if __name__ == "__main__":
-    mcp.run()
+    if MCP_TRANSPORT == "stdio":
+        mcp.run()
+    else:
+        mcp.run(
+            transport=MCP_TRANSPORT,
+            host=os.getenv("MCP_HOST", "0.0.0.0"),
+            port=int(os.getenv("MCP_PORT", "8000")),
+        )
