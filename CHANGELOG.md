@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Added HTTP transport with bearer-token auth: set `MCP_TRANSPORT=http` and `MCP_AUTH_TOKEN` (plus optional `MCP_HOST`/`MCP_PORT`); the server refuses to start over HTTP without a token. Default transport remains stdio.
+- Added OAuth 2.1 authorization server mode (`MCP_PUBLIC_URL`): MCP clients register dynamically and users sign in with their Mealie username and password. Each user's requests run with a per-user Mealie API token (encrypted at rest, deleted on revoke) instead of the shared `MEALIE_API_TOKEN`. Works alongside `MCP_AUTH_TOKEN`; state persists in `MCP_DATA_DIR` (`/data` in Docker).
+- Added HTTP transport with bearer-token auth: set `MCP_TRANSPORT=http` and `MCP_AUTH_TOKEN` (plus optional `MCP_HOST`/`MCP_PORT`); the server refuses to start over HTTP without `MCP_AUTH_TOKEN` or `MCP_PUBLIC_URL`. Default transport remains stdio.
 - Added event notifications management with 6 new MCP tools (Batch 2 - Phase 2.3)
 - Added `mealie_notifications_list` tool to list all event notifications with pagination
 - Added `mealie_notifications_create` tool to create Apprise-based notifications for Mealie events

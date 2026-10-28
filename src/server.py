@@ -168,7 +168,14 @@ from resources.shopping import get_shopping_lists, get_shopping_list_detail
 MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "stdio").lower()
 mcp = FastMCP(
     "mealie",
-    auth=build_auth(MCP_TRANSPORT, os.getenv("MCP_AUTH_TOKEN")),
+    auth=build_auth(
+        MCP_TRANSPORT,
+        os.getenv("MCP_AUTH_TOKEN"),
+        public_url=os.getenv("MCP_PUBLIC_URL"),
+        mealie_url=os.getenv("MEALIE_URL"),
+        data_dir=os.getenv("MCP_DATA_DIR"),
+        secret=os.getenv("MCP_SECRET_KEY"),
+    ),
 )
 
 

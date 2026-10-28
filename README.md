@@ -189,12 +189,15 @@ python -m src.server
 
 ### Hosting over HTTP (remote agents)
 
-By default the server uses stdio. To host it over the network, set `MCP_TRANSPORT=http` and a secret `MCP_AUTH_TOKEN`. The server refuses to start in HTTP mode without a token, and every request must send `Authorization: Bearer <token>`.
+By default the server uses stdio. To host it over the network, set `MCP_TRANSPORT=http` and a secret `MCP_AUTH_TOKEN`. The server refuses to start in HTTP mode without `MCP_AUTH_TOKEN` and/or `MCP_PUBLIC_URL` (OAuth, see below), and every request must be authenticated. A shared token is sent as the `Authorization: Bearer <token>`.
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `MCP_TRANSPORT` | `stdio` | `stdio` or `http` |
-| `MCP_AUTH_TOKEN` | – | Required for `http`; generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
+| `MCP_AUTH_TOKEN` | – | Shared bearer token (acts with the server's `MEALIE_API_TOKEN`); generate with `python -c "import secrets; print(secrets.token_urlsafe(32))"` |
+| `MCP_PUBLIC_URL` | – | Enables OAuth; the public HTTPS URL of this server, e.g. `https://mcp.example.com` |
+| `MCP_DATA_DIR` | `/data` in Docker | Where OAuth clients, tokens and the encryption key are stored (in-memory if unset) |
+| `MCP_SECRET_KEY` | generated | Optional encryption secret for stored Mealie tokens; otherwise a key file is created in `MCP_DATA_DIR` |
 | `MCP_HOST` | `0.0.0.0` | Bind address |
 | `MCP_PORT` | `8000` | Port (endpoint is `/mcp`) |
 
@@ -219,6 +222,26 @@ Put it behind a reverse proxy with HTTPS (Caddy, nginx, Cloudflare Tunnel); a be
   }
 }
 ```
+
+### OAuth sign-in with Mealie accounts
+
+Clients that cannot send a custom header (ChatGPT, claude.ai, other hosted agents) connect with OAuth 2.1. Set `MCP_PUBLIC_URL` and the server acts as its own authorization server: the client registers itself, the user is sent to a sign-in page hosted by this server, and logs in with their **Mealie username and password**. No third-party identity provider is needed, and Mealie is the user list.
+
+- The password is only forwarded to Mealie to get a short-lived JWT, which is used once to create a long-lived Mealie API token for that user. Neither is stored in clear text: the API token is encrypted at rest and tokens issued to clients are stored hashed.
+- Every request then runs with **that user's own Mealie permissions**, not the shared `MEALIE_API_TOKEN`.
+- Access tokens last 1 hour; refresh tokens last 30 days and rotate on use. Revoking a grant deletes the Mealie API token it created (you can also see and delete them under *User Settings → API Tokens* in Mealie).
+- Wrong passwords are throttled (5 attempts per sign-in and 5 per username per 15 minutes).
+- `MCP_AUTH_TOKEN` can be set as well, so header-capable clients such as VS Code keep working alongside OAuth.
+- Users who can only sign in to Mealie via OIDC (no password) cannot use this.
+
+```bash
+docker run -d --restart=unless-stopped -p 8000:8000 -v mealie-mcp-data:/data \
+  -e MCP_TRANSPORT=http -e MCP_PUBLIC_URL=https://mcp.example.com \
+  -e MEALIE_URL=http://mealie:9000 \
+  ghcr.io/mdlopresti/mealie-mcp:latest
+```
+
+Mount a volume at `/data` (and make it writable by the container user) so users stay signed in across restarts. The server must be reachable at `MCP_PUBLIC_URL` over HTTPS, since clients discover the OAuth endpoints (`/.well-known/oauth-authorization-server`, `/authorize`, `/token`, `/register`, `/login`) from there; forward all paths, not just `/mcp`. Then add the server URL (`https://mcp.example.com/mcp`) in the client and choose OAuth.
 
 ### Running Tests
 

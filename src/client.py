@@ -15,6 +15,19 @@ import httpx
 from dotenv import load_dotenv
 
 
+def _request_mealie_token() -> Optional[str]:
+    """Mealie API token of the OAuth user behind the current MCP request, if any."""
+    try:
+        from fastmcp.server.dependencies import get_access_token
+
+        access_token = get_access_token()
+    except Exception:
+        return None
+    if access_token is None:
+        return None
+    return (getattr(access_token, "claims", None) or {}).get("mealie_api_token")
+
+
 # Error message templates for common status codes
 _ERROR_TEMPLATES = {
     422: {
@@ -202,7 +215,7 @@ class MealieClient:
             ValueError: If required configuration is missing
         """
         self.base_url = base_url or os.getenv("MEALIE_URL")
-        self.api_token = api_token or os.getenv("MEALIE_API_TOKEN")
+        self.api_token = api_token or _request_mealie_token() or os.getenv("MEALIE_API_TOKEN")
 
         if not self.base_url:
             raise ValueError("MEALIE_URL must be set in environment or passed to constructor")
