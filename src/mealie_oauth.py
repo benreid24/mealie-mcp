@@ -76,11 +76,10 @@ def _build_fernet(data_dir: Optional[Path], secret: Optional[str]) -> Fernet:
     if key_file.exists():
         return Fernet(key_file.read_bytes().strip())
     key = Fernet.generate_key()
-    key_file.write_bytes(key)
-    try:
-        key_file.chmod(0o600)
-    except OSError:
-        pass
+    # Created 0600 atomically so the key is never readable by others, even briefly
+    fd = os.open(key_file, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "wb") as f:
+        f.write(key)
     return Fernet(key)
 
 
@@ -214,8 +213,10 @@ class MealieOAuthProvider(OAuthProvider):
         self._mealie_url = mealie_url.rstrip("/")
         directory = Path(data_dir) if data_dir else None
         if directory:
-            directory.mkdir(parents=True, exist_ok=True)
-            db_path = str(directory / "oauth.db")
+            directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+            db_file = directory / "oauth.db"
+            os.close(os.open(db_file, os.O_RDWR | os.O_CREAT, 0o600))
+            db_path = str(db_file)
         else:
             db_path = ":memory:"
             logger.warning(

@@ -3,6 +3,7 @@
 import base64
 import hashlib
 import json
+import os
 import secrets
 from urllib.parse import parse_qs, urlparse
 
@@ -261,6 +262,19 @@ async def test_expired_access_token_is_rejected(tmp_path, mealie):
     provider._store.add_token("old", "access", grant, [], None, 1.0)
     assert await provider.load_access_token("old") is None
     assert await provider.load_access_token("never-issued") is None
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX file modes")
+def test_data_files_are_created_private(tmp_path):
+    data = tmp_path / "data"
+    old = os.umask(0o022)
+    try:
+        MealieOAuthProvider(base_url=PUBLIC, mealie_url=MEALIE, data_dir=str(data))
+    finally:
+        os.umask(old)
+    assert (data.stat().st_mode & 0o777) == 0o700
+    assert ((data / "secret.key").stat().st_mode & 0o777) == 0o600
+    assert ((data / "oauth.db").stat().st_mode & 0o777) == 0o600
 
 
 def test_build_auth_requires_some_auth_for_http():
